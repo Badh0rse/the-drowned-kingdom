@@ -411,7 +411,7 @@ body.dread .title,body.dread #uname{animation:dkblur 5s ease-in-out infinite}
     <div class="slot" id="b-ach" data-tip="<b>Achievements</b> (Y)"><span class="key">Y</span>🏆</div>
     <div class="slot" id="b-save" data-tip="<b>Saves</b><br>Save, back up, export or import your game.">💾</div>
     <div class="slot" id="b-sound" data-tip="<b>Volume</b><br>Master, music and sound effects">🔊</div>
-    <div class="slot" id="b-music" data-tip="<b>Music on/off</b><br>CC0 orchestral tracks from OpenGameArt.org">🎵</div>
+    <div class="slot" id="b-music" data-tip="<b>Music on/off</b><br>An original score, generated as you play">🎵</div>
     <div class="slot" id="b-ui" data-tip="<b>Edit UI layout</b> (U)<br>Drag any panel to move it, drag the yellow corner to resize.">🖉</div>
     <div class="slot" id="b-dev" hidden data-tip="<b>Dev Tools</b> (`)<br>Testing cheats">🛠</div>
     <div class="slot" id="b-menu" data-tip="<b>Menu</b> (Esc)<br>Pause, save, support the game, or exit to the main menu.">☰</div>
@@ -6003,43 +6003,114 @@ $('dk-home').onclick=()=>{$('diveend').hidden=true;exitDive();};
 // =====================================================================
 // MUSIC: CC0 orchestral tracks (OpenGameArt.org), crossfaded by situation
 // =====================================================================
-const MUSIC={
- town:['music/town_fantasy_orchestral_theme.mp3','music/town_a_legend_will_rise.mp3','music/town_once_upon_a_time.mp3'],
- night:['music/night_at_home.mp3'],
- omens:['music/omens_fall_of_nightmares.mp3','music/omens_evil_approach.mp3'],
- finalday:['music/final_day_inevitable.mp3'],
- apocalypse:['music/apocalypse_doom_in_the_morning.mp3'],
- ruins:['music/ruins_laments_of_the_war.mp3'],
- shallows:['music/dive_shallows_waiting_ii.ogg'],
- abyss:['music/dive_fel_corrupted_minds.mp3'],
- gnome:['music/dive_gnome_outworld.mp3'],
- deepborn:['music/dive_naga_sigil.ogg'],
- kingdom:['music/kingdom_fantasy_choir_1.mp3','music/kingdom_fantasy_choir_2.mp3'],
+// ---------------- music: an original score generated live (no recordings) ----------------
+const MZ={a:new Audio(),b:new Audio(),cat:null,vol:.84*VOL.master*VOL.music,on:true,started:false};
+// root (Hz), chord (semitones above the root), tone (lowpass Hz), layer levels, and how often each event happens [min,max] s
+const MOODS={
+ menu:{root:58.27,ch:[0,6,13,18],cut:520,sub:.22,pad:.1,hum:.05,sea:0,bell:0,groan:[30,60],whisper:[25,50],drip:0},
+ town:{root:73.42,ch:[0,3,8,14,15],cut:1100,sub:.15,pad:.11,hum:.012,sea:.07,bell:[35,70],groan:[60,120],whisper:0,drip:0},
+ night:{root:65.41,ch:[0,3,6,10,13],cut:700,sub:.18,pad:.1,hum:.03,sea:.06,bell:[45,90],groan:[30,60],whisper:[40,80],drip:0},
+ omens:{root:61.74,ch:[0,1,6,7,13],cut:800,sub:.2,pad:.11,hum:.035,sea:.05,bell:[30,60],groan:[18,35],whisper:[20,40],drip:0},
+ finalday:{root:55,ch:[0,1,6,11,13],cut:950,sub:.24,pad:.12,hum:.045,sea:.06,bell:[15,30],groan:[12,25],whisper:[12,25],drip:0,heart:1},
+ ruins:{root:49,ch:[0,1,5,6,12],cut:650,sub:.22,pad:.1,hum:.02,sea:.08,bell:[25,50],groan:[20,40],whisper:[30,60],drip:0},
+ apocalypse:{root:46.25,ch:[0,1,6,7,12,13],cut:1300,sub:.28,pad:.14,hum:.05,sea:.1,bell:[8,16],groan:[6,14],whisper:[8,16],drip:0,heart:1},
+ deep:{root:58.27,ch:[0,6,13],cut:480,sub:.2,pad:.09,hum:.06,sea:0,bell:0,groan:[20,40],whisper:[25,50],drip:[3,9]},
+ fight:{root:55,ch:[0,1,6,7],cut:900,sub:.26,pad:.12,hum:.03,sea:0,bell:0,groan:[8,16],whisper:0,drip:0,heart:1},
+ shallows:{root:82.41,ch:[0,5,10,15],cut:600,sub:.12,pad:.1,hum:0,sea:.05,bell:0,groan:[40,80],whisper:0,drip:[6,14]},
+ abyss:{root:51.91,ch:[0,1,6,13],cut:420,sub:.22,pad:.1,hum:0,sea:.04,bell:0,groan:[14,28],whisper:[25,45],drip:[5,12]},
+ gnome:{root:55,ch:[0,6,11,17],cut:520,sub:.18,pad:.09,hum:.03,sea:.04,bell:[30,60],groan:[10,22],whisper:0,drip:[4,10]},
+ deepborn:{root:48.99,ch:[0,3,6,13],cut:460,sub:.22,pad:.1,hum:0,sea:.04,bell:0,groan:[12,24],whisper:[18,36],drip:[6,12]},
+ kingdom:{root:65.41,ch:[0,3,7,10,14,19],cut:900,sub:.14,pad:.14,hum:0,sea:.03,bell:[20,40],groan:[40,80],whisper:[30,60],drip:0,choir:1},
 };
-const MZ={a:new Audio(),b:new Audio(),cur:null,old:null,cat:null,fade:1,vol:.84*VOL.master*VOL.music,on:true,started:false,last:{}};
-for(const el of [MZ.a,MZ.b]){el.preload='auto';el.volume=0;el.addEventListener('ended',()=>{if(el===MZ.cur)playCat(MZ.cat);});}
 function musicCat(){
+ if(DM.force)return DM.force;
  if(S.diving){const li=DV.d?dzone(DV.d.x,DV.d.y):0;return ['shallows','abyss','gnome','deepborn','deepborn','kingdom'][li];}
  if(S.apoc)return 'apocalypse';
+ if(!S.running||!p)return 'menu';
  if(S.ruined)return 'ruins';
- if(S.raid)return 'omens';
- if(p&&inCrypt())return 'omens';
+ if(S.raid)return 'fight';
+ if(inCrypt())return 'deep';
+ const bossFight=p.foe&&!p.foe.dead&&MOBDEF[p.foe.type]&&MOBDEF[p.foe.type].boss;if(bossFight)return 'fight';
  const ph=doom().phase;if(ph===5)return 'ruins';if(ph>=3)return 'finalday';if(ph===2)return 'omens';
  const h=hour();return (h>=21||h<6)?'night':'town';
 }
-function playCat(cat){
- const list=MUSIC[cat];if(!list)return;let src=pick(list);if(list.length>1)for(let k=0;k<5&&src===MZ.last[cat];k++)src=pick(list);MZ.last[cat]=src;
- const nu=MZ.cur===MZ.a?MZ.b:MZ.a;if(MZ.old&&MZ.old!==nu)MZ.old.pause();
- MZ.old=MZ.cur;nu.src=src;nu.currentTime=0;nu.volume=0;nu.play().catch(()=>{MZ.blocked=true;});MZ.cur=nu;MZ.cat=cat;MZ.fade=0;
-}
+const DM={on:false,t:0,ev:{},voices:[],sub:[],flickT:2,heartT:0,cat:null};
+function dmNoise(sec){const n=Math.floor(AC.sampleRate*sec),b=AC.createBuffer(2,n,AC.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);let b0=0,b1=0,b2=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;b0=.99765*b0+w*.099;b1=.963*b1+w*.2965;b2=.57*b2+w*1.0526;d[i]=(b0+b1+b2+w*.1848)*.2;}}return b;}
+function dmBuild(){const A=AC;DM.on=true;
+ DM.out=A.createGain();DM.out.gain.value=0;const comp=A.createDynamicsCompressor();comp.threshold.value=-20;comp.ratio.value=3;DM.out.connect(comp);comp.connect(A.destination);
+ // a long dark room
+ const ir=A.createBuffer(2,A.sampleRate*5,A.sampleRate);for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3.2);}
+ DM.verb=A.createConvolver();DM.verb.buffer=ir;const wet=A.createGain();wet.gain.value=.6;DM.verb.connect(wet);wet.connect(DM.out);
+ DM.tone=A.createBiquadFilter();DM.tone.type='lowpass';DM.tone.frequency.value=800;DM.tone.Q.value=.6;const dry=A.createGain();dry.gain.value=.55;DM.tone.connect(dry);dry.connect(DM.out);DM.tone.connect(DM.verb);
+ DM.bus=A.createGain();DM.bus.connect(DM.tone);DM.send=A.createGain();DM.send.connect(DM.tone);DM.send.connect(DM.verb);DM.send.connect(DM.verb);
+ DM.nbuf=dmNoise(3);
+ // the drone, breathing slowly through its filter
+ const sl=A.createBiquadFilter();sl.type='lowpass';sl.frequency.value=220;DM.subG=A.createGain();DM.subG.gain.value=0;sl.connect(DM.subG);DM.subG.connect(DM.bus);
+ for(const [type,mul,det] of [['sawtooth',1,0],['sawtooth',1,7],['sine',.5,0]]){const o=A.createOscillator();o.type=type;o.frequency.value=60*mul;o.detune.value=det;o.connect(sl);o.start();DM.sub.push({o,mul});}
+ {const l=A.createOscillator(),g=A.createGain();l.frequency.value=.05;g.gain.value=90;l.connect(g);g.connect(sl.frequency);l.start();}
+ // pads: five voices drifting between notes of the mood's chord
+ for(let k=0;k<5;k++){const g=A.createGain();g.gain.value=0;const f=A.createBiquadFilter();f.type='lowpass';f.frequency.value=900;f.Q.value=2;const pan=A.createStereoPanner();pan.pan.value=k/4*1.6-.8;
+  const os=[A.createOscillator(),A.createOscillator()];os[0].type='triangle';os[1].type='sawtooth';os[1].detune.value=11;const og=A.createGain();og.gain.value=.4;
+  os[0].connect(f);os[1].connect(og);og.connect(f);f.connect(g);g.connect(pan);pan.connect(DM.bus);for(const o of os){o.frequency.value=110;o.start();}
+  const v=A.createOscillator(),vg=A.createGain();v.frequency.value=.08+Math.random()*.2;vg.gain.value=5;v.connect(vg);for(const o of os)vg.connect(o.detune);v.start();
+  DM.voices.push({os,g,f,vg,next:k*2.2});}
+ // the hum of old lights: mains hum, a high electric buzz, and a flicker
+ DM.flk=A.createGain();DM.flk.connect(DM.out);DM.humG=A.createGain();DM.humG.gain.value=0;DM.humG.connect(DM.flk);
+ for(const [f,a] of [[60,.5],[120,.35],[180,.15],[240,.08]]){const o=A.createOscillator();o.frequency.value=f;const g=A.createGain();g.gain.value=a;o.connect(g);g.connect(DM.humG);o.start();}
+ {const z=A.createBufferSource();z.buffer=DM.nbuf;z.loop=true;const bp=A.createBiquadFilter();bp.type='bandpass';bp.frequency.value=4200;bp.Q.value=7;const g=A.createGain();g.gain.value=.5;z.connect(bp);bp.connect(g);g.connect(DM.humG);z.start();}
+ // the sea, rising and falling
+ {const n=A.createBufferSource();n.buffer=dmNoise(4);n.loop=true;const lp=A.createBiquadFilter();lp.type='lowpass';lp.frequency.value=380;const sw=A.createGain();sw.gain.value=.6;DM.seaG=A.createGain();DM.seaG.gain.value=0;
+  const l=A.createOscillator(),lg=A.createGain();l.frequency.value=.09;lg.gain.value=.4;l.connect(lg);lg.connect(sw.gain);l.start();n.connect(lp);lp.connect(sw);sw.connect(DM.seaG);DM.seaG.connect(DM.out);n.start();}}
+function dmPan(){const pn=AC.createStereoPanner();pn.pan.value=rand(-.9,.9);pn.connect(DM.send);return pn;}
+// a drowned bell, somewhere out on the water
+function dmBell(M){const A=AC,t=A.currentTime,base=M.root*4*Math.pow(2,pick([0,3,6,7])/12),pn=dmPan();
+ for(const [r,a,d] of [[.5,.5,7],[1,1,6],[2,.5,4],[2.76,.45,3.5],[5.4,.25,2.2],[8.93,.12,1.4]]){const o=A.createOscillator();o.frequency.value=base*r;const g=A.createGain();o.connect(g);g.connect(pn);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(a*.1,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.start(t);o.stop(t+d+.1);}}
+// metal, or something very large, groaning
+function dmGroan(M){const A=AC,t=A.currentTime,d=rand(3,6),o=A.createOscillator(),f=A.createBiquadFilter(),g=A.createGain(),pn=dmPan();o.type='sawtooth';
+ o.frequency.setValueAtTime(M.root*rand(2,3),t);o.frequency.exponentialRampToValueAtTime(M.root*rand(.8,1.2),t+d);f.type='lowpass';f.Q.value=7;f.frequency.setValueAtTime(500,t);f.frequency.exponentialRampToValueAtTime(140,t+d);
+ const v=A.createOscillator(),vg=A.createGain();v.frequency.value=rand(3,6);vg.gain.value=25;v.connect(vg);vg.connect(o.detune);
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.07,t+d*.3);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(f);f.connect(g);g.connect(pn);o.start(t);v.start(t);o.stop(t+d+.1);v.stop(t+d+.1);}
+// whispering just out of reach
+function dmWhisper(M){const A=AC,t=A.currentTime,d=rand(1.2,2.2),n=A.createBufferSource(),bp=A.createBiquadFilter(),g=A.createGain(),am=A.createGain(),pn=dmPan();
+ n.buffer=DM.nbuf;n.playbackRate.value=rand(.8,1.2);bp.type='bandpass';bp.Q.value=4;bp.frequency.setValueAtTime(rand(1600,2600),t);bp.frequency.linearRampToValueAtTime(rand(700,1100),t+d);
+ const l=A.createOscillator(),lg=A.createGain();l.frequency.value=rand(5,9);lg.gain.value=.5;am.gain.value=.5;l.connect(lg);lg.connect(am.gain);
+ g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.06,t+.3);g.gain.linearRampToValueAtTime(0,t+d);n.connect(bp);bp.connect(am);am.connect(g);g.connect(pn);n.start(t,rand(0,2));l.start(t);n.stop(t+d);l.stop(t+d);}
+function dmDrip(M){const A=AC,t=A.currentTime,o=A.createOscillator(),g=A.createGain(),pn=dmPan();o.frequency.setValueAtTime(rand(1100,1700),t);o.frequency.exponentialRampToValueAtTime(rand(400,600),t+.06);
+ g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.0001,t+.12);o.connect(g);g.connect(pn);o.start(t);o.stop(t+.15);}
+function dmHeart(){const A=AC,t=A.currentTime;for(const [dt,a] of [[0,.22],[.28,.14]]){const o=A.createOscillator(),g=A.createGain();o.frequency.setValueAtTime(55,t+dt);o.frequency.exponentialRampToValueAtTime(32,t+dt+.14);
+ g.gain.setValueAtTime(0,t+dt);g.gain.linearRampToValueAtTime(a,t+dt+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dt+.18);o.connect(g);g.connect(DM.out);o.start(t+dt);o.stop(t+dt+.2);}}
+const DM_EV={bell:dmBell,groan:dmGroan,whisper:dmWhisper,drip:dmDrip};
+async function renderMood(cat,secs=40,rate=22050){const liveAC=AC,saved={...DM},was={on:MZ.on,muted:S.muted,started:MZ.started,vol:MZ.vol};
+ const ctx=new OfflineAudioContext(2,Math.ceil(secs*rate),rate);AC=ctx;Object.assign(DM,{on:false,t:0,ev:{},voices:[],sub:[],flickT:2,heartT:0,cat:null,force:cat});MZ.on=true;S.muted=false;MZ.started=true;MZ.vol=.84*.6*.5;
+ for(let tt=.05;tt<secs;tt+=.1)ctx.suspend(tt).then(()=>{updateMusic(.1);ctx.resume();});
+ let buf;try{buf=await ctx.startRendering();}finally{AC=liveAC;for(const k of Object.keys(DM))delete DM[k];Object.assign(DM,saved);Object.assign(MZ,{on:was.on,started:was.started,vol:was.vol});S.muted=was.muted;}
+ const L=buf.getChannelData(0),R=buf.getChannelData(1),n=L.length;let peak=0,sum=0;const pcm=new Int16Array(n*2);
+ for(let i=0;i<n;i++){const a=L[i],b=R[i];peak=Math.max(peak,Math.abs(a),Math.abs(b));sum+=a*a+b*b;pcm[i*2]=Math.max(-1,Math.min(1,a))*32767;pcm[i*2+1]=Math.max(-1,Math.min(1,b))*32767;}
+ const hd=new DataView(new ArrayBuffer(44)),w=(o,str)=>{for(let i=0;i<str.length;i++)hd.setUint8(o+i,str.charCodeAt(i));};
+ w(0,'RIFF');hd.setUint32(4,36+pcm.byteLength,true);w(8,'WAVE');w(12,'fmt ');hd.setUint32(16,16,true);hd.setUint16(20,1,true);hd.setUint16(22,2,true);hd.setUint32(24,rate,true);hd.setUint32(28,rate*4,true);hd.setUint16(32,4,true);hd.setUint16(34,16,true);w(36,'data');hd.setUint32(40,pcm.byteLength,true);
+ return {wav:new Blob([hd,pcm],{type:'audio/wav'}),peak:+peak.toFixed(3),rms:+Math.sqrt(sum/(n*2)).toFixed(4)};}
 function updateMusic(dt){
  if(!MZ.started)return;
- if(MZ.blocked&&MZ.cur){MZ.blocked=false;MZ.cur.play().catch(()=>{MZ.blocked=true;});}
- const cat=musicCat();if(cat!==MZ.cat)playCat(cat);
- MZ.fade=Math.min(1,MZ.fade+dt/2.5);
- const v=(MZ.on&&!S.muted)?MZ.vol*(S.diving?.9:1):0;
- if(MZ.cur)MZ.cur.volume=clamp(v*MZ.fade,0,1);
- if(MZ.old){MZ.old.volume=clamp(v*(1-MZ.fade),0,1);if(MZ.fade>=1){MZ.old.pause();MZ.old=null;}}
+ try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();}catch(e){return;}
+ if(!DM.on)dmBuild();
+ const cat=musicCat(),M=MOODS[cat]||MOODS.town,t=AC.currentTime;DM.t+=dt;MZ.cat=cat;
+ DM.out.gain.setTargetAtTime((MZ.on&&!S.muted)?MZ.vol*1.8:0,t,.8);
+ if(cat!==DM.cat){DM.cat=cat;const k=2.5;
+  for(const s of DM.sub)s.o.frequency.setTargetAtTime(M.root*s.mul,t,k);DM.subG.gain.setTargetAtTime(M.sub,t,k);DM.tone.frequency.setTargetAtTime(M.cut,t,k);
+  DM.humG.gain.setTargetAtTime(M.hum,t,k);DM.seaG.gain.setTargetAtTime(M.sea,t,k);
+  for(const v of DM.voices)v.next=Math.min(v.next,DM.t+rand(0,3));
+  for(const e in DM_EV)DM.ev[e]=M[e]?DM.t+rand(M[e][0]*.2,M[e][0]*.6):1e9;}
+ const san=p&&p.needs?p.needs.sanity:80,dread=clamp((55-san)/55,0,1);
+ // pads drift: one voice at a time fades out, takes another note of the chord, and swells back in
+ for(const v of DM.voices)if(DM.t>=v.next){v.next=DM.t+rand(7,16);const semi=pick(M.ch)+12*pick([1,1,2,2,3]),f=M.root*Math.pow(2,semi/12);
+  v.g.gain.setTargetAtTime(0,t,.7);const t2=t+2.6;v.os[0].frequency.setValueAtTime(f,t2);v.os[1].frequency.setValueAtTime(f*(M.choir?2:1),t2);
+  v.g.gain.setTargetAtTime(M.pad*rand(.5,1)*(semi>30?.5:1),t2,2.5);v.f.frequency.setTargetAtTime(M.cut*rand(.6,1.4),t2,3);v.vg.gain.setTargetAtTime(5+40*dread,t,2);}
+ // the lights flicker
+ if(M.hum>0&&DM.t>=DM.flickT){DM.flickT=DM.t+rand(1.5,9);const g=DM.flk.gain,n=1+Math.floor(Math.random()*3);let tt=t;g.cancelScheduledValues(t);g.setValueAtTime(1,t);
+  for(let i=0;i<n;i++){g.linearRampToValueAtTime(rand(0,.2),tt+.02);tt+=rand(.04,.12);g.linearRampToValueAtTime(1,tt+.02);tt+=rand(.05,.2);}}
+ for(const e in DM_EV)if(DM.t>=DM.ev[e]){const r=M[e];if(!r){DM.ev[e]=1e9;continue;}DM.ev[e]=DM.t+rand(r[0],r[1])*(e==='whisper'?1-.6*dread:1);DM_EV[e](M);}
+ if(M.heart||san<30){DM.heartT-=dt;if(DM.heartT<=0){DM.heartT=san<15?.75:san<30?1:1.3;dmHeart();}}
 }
 addEventListener('pointerdown',()=>{MZ.started=true;},{capture:true});
 addEventListener('keydown',()=>{MZ.started=true;},{capture:true});
@@ -6066,7 +6137,7 @@ $('b-music').onclick=()=>{MZ.on=!MZ.on;$('b-music').childNodes[0].textContent=MZ
 // console access for testing / modding: window.SW
 initCareers();
 loadQ();
-window.SW={Q,makeQAvatar,spawnChild,famDaily,growUp,succession,familyActs,newWishes,feel,npcInitiate,npcIntent,family,famHour,relDecay,relStage,socialActs,CAREERS,careerShift,pushTide,closePanel,addCitizen,removeCitizen,chat,openPanel,esc,save,hour,day,TOPICS,readiness,step:dt=>{update(dt);render3d(dt);},diveStep:dt=>{diveUpdate(dt);diveRender();},passable,findPath,HOMEB,socialTick,updateNpc,startRaid,endRaid,whelps,DV,MZ,startDive,exitDive,get p(){return p;},S,npcs,OBJS,BUILD,cam,world,T,OFF,walkTo,startAction,snapCam,tick,npcActs,openBoard,ev,rollCatch,landFish,pickFish,chainOffer,togglePanel,questAI,buildMask,openSecret,dWater,dzone,TUNNELS,GATES,DL,camera,scene,renderer,makeAvatar,mobs,MOBDEF,lvl,hpMax,refreshObjVis,rebuildBlocked};
+window.SW={renderMood,MOODS,updateMusic,musicCat,DM,Q,makeQAvatar,spawnChild,famDaily,growUp,succession,familyActs,newWishes,feel,npcInitiate,npcIntent,family,famHour,relDecay,relStage,socialActs,CAREERS,careerShift,pushTide,closePanel,addCitizen,removeCitizen,chat,openPanel,esc,save,hour,day,TOPICS,readiness,step:dt=>{update(dt);render3d(dt);},diveStep:dt=>{diveUpdate(dt);diveRender();},passable,findPath,HOMEB,socialTick,updateNpc,startRaid,endRaid,whelps,DV,MZ,startDive,exitDive,get p(){return p;},S,npcs,OBJS,BUILD,cam,world,T,OFF,walkTo,startAction,snapCam,tick,npcActs,openBoard,ev,rollCatch,landFish,pickFish,chainOffer,togglePanel,questAI,buildMask,openSecret,dWater,dzone,TUNNELS,GATES,DL,camera,scene,renderer,makeAvatar,mobs,MOBDEF,lvl,hpMax,refreshObjVis,rebuildBlocked};
 requestAnimationFrame(frame);
 boot();
 </script>

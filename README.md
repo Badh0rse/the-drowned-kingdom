@@ -8,4 +8,4 @@ Raise a family and make friends and enemies in a town of people who remember you
 
 Free to play, always. If you enjoy it, you can support development on Ko-fi: https://ko-fi.com/cosmerecrawler
 
-Credits for the free (CC0) models, music and sounds are in [CREDITS.txt](CREDITS.txt). three.js is used under the MIT license ([LICENSE-three.js.txt](LICENSE-three.js.txt)).
+The music is an original score generated as you play. Credits for the free (CC0) models and sounds are in [CREDITS.txt](CREDITS.txt). three.js is used under the MIT license ([LICENSE-three.js.txt](LICENSE-three.js.txt)).
