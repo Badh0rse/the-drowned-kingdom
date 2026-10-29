@@ -28,6 +28,16 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0d0c0a;color:#eee;fon
 .l3 .qm{font:900 24px Georgia,serif;color:#c6d2b2;-webkit-text-stroke:1px #000;line-height:1}
 .l3.bld{font:800 14px Cinzel,Georgia,serif;color:#d2d8c8;letter-spacing:.03em}
 .l3.ft{font:800 17px Georgia,'Times New Roman',serif;letter-spacing:.4px}
+#pausem{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(12,9,7,.55),rgba(4,3,2,.88))}
+#pausem[hidden]{display:none}
+#pausem .card{width:min(380px,90vw);padding:24px 26px 18px;text-align:center;background:linear-gradient(#1c1813,#0d0b09);border:1px solid var(--gold2);border-radius:10px;box-shadow:0 12px 50px rgba(0,0,0,.7)}
+#pausem h2{margin:0 0 2px;font:700 24px Cinzel,Georgia,serif;color:var(--gold);letter-spacing:1px}
+#pausem .sub{margin:0 0 16px;font:italic 13px Georgia,serif;color:#a69a82}
+#pausem .btn{display:block;width:100%;margin:7px 0;padding:10px 14px;font-size:15px}
+#pausem .pm-kofi{margin:14px 0 4px;padding:13px 14px;font-size:17px;font-weight:700;color:#1a120a;background:linear-gradient(#e2c27a,#a87c34);border-color:#f2dca0;box-shadow:0 0 18px rgba(226,194,122,.35)}
+#pausem .pm-kofi:hover{background:linear-gradient(#f0d48e,#b88a3e)}
+#pausem .pm-note{font:12px Georgia,serif;color:#8f8470;margin:0 0 12px}
+#pausem .pm-exit{color:#d8a08a;border-color:#7a3a2a}
 .kofi{margin-top:10px;text-align:center;font:13px Georgia,serif;color:#a69a82}
 .kofi a{color:#e2c98a;font-weight:700;text-decoration:none;border-bottom:1px dotted #b8955a;white-space:nowrap}.kofi a:hover{color:#fff1c8}
 .l3.ft .nm{text-shadow:-1px -1px 0 #0d0a08,1px -1px 0 #0d0a08,-1px 1px 0 #0d0a08,1px 1px 0 #0d0a08,0 2px 5px rgba(0,0,0,.6);animation:ftpop .28s ease-out}
@@ -404,6 +414,7 @@ body.dread .title,body.dread #uname{animation:dkblur 5s ease-in-out infinite}
     <div class="slot" id="b-music" data-tip="<b>Music on/off</b><br>CC0 orchestral tracks from OpenGameArt.org">🎵</div>
     <div class="slot" id="b-ui" data-tip="<b>Edit UI layout</b> (U)<br>Drag any panel to move it, drag the yellow corner to resize.">🖉</div>
     <div class="slot" id="b-dev" hidden data-tip="<b>Dev Tools</b> (`)<br>Testing cheats">🛠</div>
+    <div class="slot" id="b-menu" data-tip="<b>Menu</b> (Esc)<br>Pause, save, support the game, or exit to the main menu.">☰</div>
     <div class="slot" id="b-kofi" data-tip="<b>Support the game</b><br>The Drowned Kingdom is free to play, always. Tips on Ko-fi help turn it into a full game.">🕯️</div>
     <div class="slot" id="b-help" data-tip="<b>How to play</b>">❓</div>
   </div>
@@ -2626,7 +2637,7 @@ function pollPad(dt){
  if(pr(3)&&inD)drinkPotion();else if(pr(3)){const q=p.quests.find(q=>String(q.id)===String(p.flags.track))||p.quests[0];if(q)goToQuest(q);}
  if(pr(4))cycleTarget(-1);if(pr(5))cycleTarget(1);
  if(pr(12))togglePanel('quests');if(pr(13))togglePanel('bags');if(pr(14))togglePanel('friends');if(pr(15))togglePanel('fishlog');
- if(pr(9))togglePanel('help');if(pr(8))hearth();if(pr(10))setSpeed(S.speed>=3?1:3);
+ if(pr(9)){PM.open?closePause():openPause();}if(pr(8))hearth();if(pr(10))setSpeed(S.speed>=3?1:3);
  PAD.prev=now;}
 addEventListener('gamepadconnected',()=>{PAD.prev={};});
 function openPanel(title,html){const was=!$('panel').hidden;$('ptitle').textContent=title;$('pbody').innerHTML=html;$('panel').hidden=false;if(!was)sfx(['quests','skills','fishlog','help','prep','ach'].includes(S.panel)?'book':S.panel==='board'?'page':S.panel==='bags'?'cloth':'open',.5);}
@@ -3971,6 +3982,7 @@ document.addEventListener('pointerdown',e=>{const el=$('volpop');if(el&&!el.cont
 let showBNames=true;
 addEventListener('keydown',e=>{
  if(e.target.tagName==='INPUT'||!S.running)return;
+ if(PM.open&&e.key!=='Escape'){if(e.key!=='Enter'&&e.key!==' ')e.preventDefault();return;}
  const k=e.key.toLowerCase();
  if(!menu.hidden&&['arrowup','arrowdown','w','s','enter','e',' '].includes(k)){e.preventDefault();if(k==='arrowup'||k==='w')menuMove(-1);else if(k==='arrowdown'||k==='s')menuMove(1);else menuPick();return;}
  if(k==='e'&&!e.repeat){interact();return;}
@@ -3989,7 +4001,7 @@ addEventListener('keydown',e=>{
  else if(k==='h')hearth();else if(k==='b')togglePanel('bags');else if(k==='k')togglePanel('skills');else if(k==='f')togglePanel('friends');else if(k==='y')togglePanel('ach');else if(k==='l')togglePanel('quests');else if(k==='c')togglePanel('prep');else if(k==='o')togglePanel('hood');else if(k==='u')setUIEdit(!uiEdit);else if(k==='j')togglePanel('fishlog');
  else if(k==='n')showBNames=!showBNames;
  else if(k==='s'&&(e.ctrlKey||e.metaKey)){e.preventDefault();keys.s=false;save(true);}
- else if(k==='escape'){closeMenu();closePanel();}
+ else if(k==='escape'){if(PM.open)closePause();else if(!menu.hidden||!$('panel').hidden){closeMenu();closePanel();}else openPause();}
 });
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 const clearKeys=()=>{for(const k in keys)keys[k]=false;for(const k in DV.keys)DV.keys[k]=false;};
@@ -5972,13 +5984,14 @@ function drawDiveHud(){
   const lab=`${Math.round(d.y/10)} m`;dg.font='800 13px system-ui';const tw=dg.measureText(lab).width;dg.fillStyle='rgba(22,18,13,.88)';rr(gx-26-tw-12,yy-11,tw+14,22,11);dg.fill();dg.fillStyle=d.y>SUITMAX[P.suit]?'#ff6a5a':'#fff';dg.textAlign='center';dg.textBaseline='middle';dg.fillText(lab,gx-26-tw/2-5,yy+1);}}
 }
 addEventListener('keydown',e=>{if(!S.diving)return;const k=e.key.toLowerCase();DV.keys[k]=true;if(['w','a','s','d',' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+ if(k==='escape'&&!$('divepanel').offsetParent){PM.open?closePause():openPause();return;}
  if(DV.paused)return;
  if(k==='e'&&DV.atBoat)openDivePanel();
  if(k===' '&&DV.d.dashCd<=0&&!e.repeat){const d=DV.d,K=DV.keys;let ax=(K.d||K.arrowright?1:0)-(K.a||K.arrowleft?1:0),ay=(K.s||K.arrowdown?1:0)-(K.w||K.arrowup?1:0);if(!ax&&!ay){ax=Math.cos(d.aim);ay=Math.sin(d.aim);}const L=Math.hypot(ax,ay)||1;d.vx=ax/L*560;d.vy=ay/L*560;d.dashT=.28;sfx('cloth',.4,.8);d.dashCd=.55;d.o2=Math.max(0,d.o2-3);for(let n=0;n<8;n++)DV.parts.push({x:d.x,y:d.y,vx:-ax/L*dRand(60,160),vy:-ay/L*dRand(60,160),t:.6,col:'rgba(220,250,255,.8)',r:dRand(1.5,3),bub:1});}
  if(k==='q')diveKnife();
  if(k==='f'){DV.d.lamp=!DV.d.lamp;msg(DV.d.lamp?'🔦 Lamp on.':'🌑 Lamp off. You can barely see... but neither can they.','#a6b0a2');snd('click');}
  const r=RECIPES.find(x=>x.key===k);if(r)useKit(r.id);
- if(k==='escape'){if(DV.atBoat)openDivePanel();else msg('Swim up to the boat to rest and upgrade.','#a6b0a2');}});
+});
 addEventListener('keyup',e=>{DV.keys[e.key.toLowerCase()]=false;});
 addEventListener('blur',()=>{DV.keys={};});
 dcv.addEventListener('pointermove',e=>{DV.mouse.x=e.clientX;DV.mouse.y=e.clientY;if(e.isTrusted)PAD.mouseT=performance.now();});
@@ -6030,6 +6043,24 @@ function updateMusic(dt){
 }
 addEventListener('pointerdown',()=>{MZ.started=true;},{capture:true});
 addEventListener('keydown',()=>{MZ.started=true;},{capture:true});
+// ---- pause menu ----
+const PM={open:false,speed:1,dive:false};
+function pmBuild(){if($('pausem'))return;const d=document.createElement('div');d.id='pausem';d.hidden=true;
+ d.innerHTML=`<div class="card"><h2>The Drowned Kingdom</h2><p class="sub">The island holds its breath.</p>
+  <button class="btn" id="pm-resume">Resume</button><button class="btn" id="pm-save">💾 Save Game</button>
+  <button class="btn" id="pm-vol">🔊 Volume</button><button class="btn" id="pm-help">❓ How to Play</button>
+  <button class="btn pm-kofi" id="pm-kofi">🕯️ Support the Game</button><p class="pm-note">Free to play, always. Tips on Ko-fi help make it a full game.</p>
+  <button class="btn pm-exit" id="pm-exit">Exit to Main Menu</button></div>`;
+ document.body.appendChild(d);d.addEventListener('pointerdown',e=>{if(e.target===d)closePause();});
+ $('pm-resume').onclick=closePause;$('pm-save').onclick=()=>{save(true);$('pm-save').textContent='💾 Saved';setTimeout(()=>{if($('pm-save'))$('pm-save').textContent='💾 Save Game';},1500);};
+ $('pm-vol').onclick=()=>{closePause();if(!S.diving)toggleVol();};$('pm-help').onclick=()=>{closePause();if(!S.diving)togglePanel('help');};
+ $('pm-kofi').onclick=()=>window.open('https://ko-fi.com/cosmerecrawler','_blank','noopener');
+ $('pm-exit').onclick=()=>{const b=$('pm-exit');if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Your game will be saved. Exit?';return;}exitToMenu();};}
+function openPause(){if(PM.open||!p)return;pmBuild();PM.open=true;PM.dive=!!S.diving;if(PM.dive){PM.wasPaused=DV.paused;DV.paused=true;}else{PM.speed=S.speed;setSpeed(0);closeMenu();}
+ clearKeys();const b=$('pm-exit');b.dataset.sure='';b.textContent='Exit to Main Menu';$('pm-vol').hidden=$('pm-help').hidden=PM.dive;$('pausem').hidden=false;$('pm-resume').focus();snd('click');}
+function closePause(){if(!PM.open)return;PM.open=false;$('pausem').hidden=true;if(PM.dive)DV.paused=!!PM.wasPaused;else setSpeed(PM.speed||1);}
+function exitToMenu(){try{if(S.diving)exitDive();}catch(e){}save(false);location.reload();}
+$('b-menu').onclick=()=>PM.open?closePause():openPause();
 $('b-kofi').onclick=()=>window.open('https://ko-fi.com/cosmerecrawler','_blank','noopener');
 $('b-music').onclick=()=>{MZ.on=!MZ.on;$('b-music').childNodes[0].textContent=MZ.on?'🎵':'🔕';};
 // console access for testing / modding: window.SW
